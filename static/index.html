@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transcription Studio</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- Background orbs -->
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<header>
+  <div class="logo">◈ Transcription Studio <span class="logo-badge">Universal-2</span></div>
+  <div class="header-right">
+    <div id="apiStatus" class="api-status">
+      <span class="dot dot--warn"></span><span id="apiLabel">Checking…</span>
+    </div>
+    <button id="btnHistory" class="icon-btn" title="History">🕐</button>
+  </div>
+</header>
+
+<!-- History drawer -->
+<div id="historyDrawer" class="drawer" style="display:none">
+  <div class="drawer-head">
+    <strong>Recent Transcriptions</strong>
+    <button id="btnCloseHistory" class="icon-btn">✕</button>
+  </div>
+  <div id="historyList" class="history-list"></div>
+  <div class="drawer-foot">
+    <div class="resume-row">
+      <input id="resumeInput" class="input" placeholder="Paste transcript ID…" />
+      <button id="btnResume" class="btn btn-sm btn-primary">Load</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- Step Indicator -->
+  <div class="step-indicator">
+    <div class="step-dot active current" data-step="step-source"><span>1</span><small>Source</small></div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-step="step-options"><span>2</span><small>Options</small></div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-step="step-processing"><span>3</span><small>Processing</small></div>
+    <div class="step-line"></div>
+    <div class="step-dot" data-step="step-results"><span>4</span><small>Results</small></div>
+  </div>
+
+  <!-- ══ STEP: SOURCE ══ -->
+  <section id="step-source">
+    <div class="page-title">Choose Source</div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="file">Upload File</button>
+      <button class="tab" data-tab="url">URL</button>
+    </div>
+
+    <div id="pane-file" class="pane">
+      <div id="dropzone" class="dropzone">
+        <div class="dz-icon">📂</div>
+        <div class="dz-title">Drop file here or click Browse</div>
+        <div class="dz-sub">MP4 · MKV · AVI · MOV · MP3 · WAV · FLAC · M4A and more</div>
+        <button id="btnBrowse" class="btn btn-outline mt-12">Browse Files</button>
+        <input id="fileInput" type="file" accept="video/*,audio/*,.mkv,.flac,.m4a,.ogg,.opus" hidden />
+      </div>
+    </div>
+
+    <div id="pane-url" class="pane" style="display:none">
+      <div class="url-row">
+        <input id="urlInput" class="input" placeholder="https://youtube.com/watch?v=… or any video URL" />
+        <button id="btnDownloadUrl" class="btn btn-primary">Download Audio</button>
+      </div>
+      <p class="hint">Supports YouTube, Vimeo, SoundCloud, and 1000+ sites</p>
+    </div>
+
+    <div id="sourceStatus" class="status-card" style="display:none">
+      <span id="statusIcon">⏳</span>
+      <div>
+        <div id="statusTitle" class="fw-600">Processing…</div>
+        <div id="statusSub" class="muted text-sm"></div>
+      </div>
+    </div>
+
+    <div class="row-end mt-24">
+      <button id="btnToOptions" class="btn btn-primary btn-lg" disabled>Configure Options →</button>
+    </div>
+  </section>
+
+  <!-- ══ STEP: OPTIONS ══ -->
+  <section id="step-options" style="display:none">
+    <div class="page-title">Transcription Options</div>
+
+    <div class="grid-2">
+
+      <!-- Language -->
+      <div class="card">
+        <div class="card-head">Language</div>
+        <div class="card-body">
+          <div class="seg-btns">
+            <button id="btnAuto" class="seg active">AUTO</button>
+            <button id="btnManual" class="seg">SELECT</button>
+          </div>
+          <div id="autoPane">
+            <div class="opt-row mt-8">
+              <div>
+                <div class="opt-label">Code Switching</div>
+                <div class="opt-sub">Multiple languages in one audio</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="codeSwitching"><span class="slider"></span></label>
+            </div>
+            <div id="cswLangsWrap" style="display:none" class="mt-8">
+              <input id="cswSearch" class="input input-sm" placeholder="Filter languages…" />
+              <div id="cswList" class="check-list mt-6"></div>
+            </div>
+            <div id="langConfWrap" style="display:none" class="mt-8">
+              <div class="opt-label">Language Confidence: <strong id="langConfVal">0.7</strong></div>
+              <div class="opt-sub mb-6">Lower = detects language switches more aggressively</div>
+              <input type="range" id="langConfThresh" class="range" min="0.1" max="0.9" step="0.05" value="0.7" />
+            </div>
+          </div>
+          <div id="manualPane" style="display:none">
+            <input id="langSearch" class="input input-sm mt-8" placeholder="Search 99 languages…" />
+            <select id="langSelect" class="select mt-6" size="6"></select>
+            <div id="selectedLangBadge" class="lang-badge" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speaker -->
+      <div class="card">
+        <div class="card-head row-between">
+          Speaker Diarization
+          <label class="toggle"><input type="checkbox" id="speakerLabels"><span class="slider"></span></label>
+        </div>
+        <div id="speakerBody" class="card-body disabled">
+          <div class="opt-row">
+            <div class="opt-label">Speaker count</div>
+          </div>
+          <div class="seg-btns mt-6">
+            <button id="btnSpkAuto" class="seg active">AUTO</button>
+            <button id="btnSpkManual" class="seg">MANUAL</button>
+          </div>
+          <div id="spkAutoHint" class="opt-sub mt-6">Automatically detects the number of speakers</div>
+          <div id="spkManualPane" style="display:none" class="mt-6">
+            <div class="opt-label">Expected speakers: <strong id="spkVal">2</strong></div>
+            <input type="range" id="spkRange" class="range mt-6" min="1" max="10" value="2" />
+          </div>
+          <hr class="divider" />
+          <div class="opt-row">
+            <div>
+              <div class="opt-label">Speaker Identification</div>
+              <div class="opt-sub">Assign names or roles</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="speakerID"><span class="slider"></span></label>
+          </div>
+          <div id="speakerIDBody" style="display:none" class="mt-8">
+            <div class="seg-btns mb-8">
+              <button class="seg active spk-type-btn" data-v="name">Name</button>
+              <button class="seg spk-type-btn" data-v="role">Role</button>
+            </div>
+            <div id="spkValues"></div>
+            <button id="btnAddSpk" class="btn btn-ghost btn-sm mt-6">+ Add</button>
+          </div>
+          <hr class="divider" />
+          <div class="opt-row">
+            <div>
+              <div class="opt-label">Multichannel</div>
+              <div class="opt-sub">Per-channel transcription</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="multichannel"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Format -->
+      <div class="card">
+        <div class="card-head">Format Transcript</div>
+        <div class="card-body">
+          <div class="opt-row"><span class="opt-label">Auto Punctuation</span>
+            <label class="toggle"><input type="checkbox" id="punctuate" checked><span class="slider"></span></label>
+          </div>
+          <div class="opt-row"><span class="opt-label">Text Formatting</span>
+            <label class="toggle"><input type="checkbox" id="formatText" checked><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">Filler Words</span><span class="badge-en ml-6">EN only</span><div class="opt-sub">Include "um", "uh", "hmm"</div></div>
+            <label class="toggle"><input type="checkbox" id="disfluencies"><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">Remove Audio Tags</span><div class="opt-sub">Strip [MUSIC] [NOISE] etc.</div></div>
+            <label class="toggle"><input type="checkbox" id="removeAudioTags"><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">Filter Profanity</span><span class="badge-en ml-6">EN only</span></div>
+            <label class="toggle"><input type="checkbox" id="filterProfanity"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Formatting -->
+      <div class="card">
+        <div class="card-head">Custom Formatting</div>
+        <div class="card-body">
+          <label class="field-label">Date format</label>
+          <select id="dateFormat" class="select select-sm">
+            <option value="">Default</option>
+            <option value="mm/dd/yyyy">MM/DD/YYYY (US)</option>
+            <option value="dd/mm/yyyy">DD/MM/YYYY (EU)</option>
+            <option value="yyyy-mm-dd">YYYY-MM-DD (ISO)</option>
+            <option value="dd.mm.yyyy">DD.MM.YYYY</option>
+          </select>
+          <label class="field-label mt-10">Phone format</label>
+          <select id="phoneFormat" class="select select-sm">
+            <option value="">Default</option>
+            <option value="(xxx)xxx-xxxx">(xxx)xxx-xxxx</option>
+            <option value="xxx-xxx-xxxx">xxx-xxx-xxxx</option>
+            <option value="+x(xxx)xxx-xxxx">+x(xxx)xxx-xxxx</option>
+          </select>
+          <label class="field-label mt-10">Email format</label>
+          <select id="emailFormat" class="select select-sm">
+            <option value="">Default</option>
+            <option value="username@domain.com">username@domain.com</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Translation -->
+      <div class="card">
+        <div class="card-head">Translation</div>
+        <div class="card-body">
+          <input id="transSearch" class="input input-sm" placeholder="Search 80+ languages…" />
+          <div id="transList" class="check-list mt-6"></div>
+          <div id="transOpts" style="display:none" class="mt-10">
+            <div class="opt-row">
+              <div><span class="opt-label">Formal language</span></div>
+              <label class="toggle"><input type="checkbox" id="transFormal"><span class="slider"></span></label>
+            </div>
+            <div class="opt-row">
+              <div><span class="opt-label">Per-utterance</span><div class="opt-sub">Required for subtitle export</div></div>
+              <label class="toggle"><input type="checkbox" id="transUtterance"><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PII -->
+      <div class="card">
+        <div class="card-head row-between">
+          PII Redaction
+          <label class="toggle"><input type="checkbox" id="piiEnabled"><span class="slider"></span></label>
+        </div>
+        <div id="piiBody" class="card-body disabled">
+          <div id="piiGrid" class="pii-grid"></div>
+          <label class="field-label mt-10">Substitution</label>
+          <select id="piiSub" class="select select-sm">
+            <option value="entity_name">[ENTITY_NAME]</option>
+            <option value="hash">####</option>
+          </select>
+          <hr class="divider" />
+          <div class="opt-row">
+            <div><span class="opt-label">Redact Audio</span><div class="opt-sub">Download beep/silence version</div></div>
+            <label class="toggle"><input type="checkbox" id="piiAudio"><span class="slider"></span></label>
+          </div>
+          <div id="piiAudioOpts" style="display:none" class="mt-8">
+            <div class="row-gap">
+              <label class="radio-lbl"><input type="radio" name="audFmt" value="mp3" checked/> MP3</label>
+              <label class="radio-lbl"><input type="radio" name="audFmt" value="wav"/> WAV</label>
+              <label class="radio-lbl"><input type="radio" name="audMethod" value="beep" checked/> Beep</label>
+              <label class="radio-lbl"><input type="radio" name="audMethod" value="silence"/> Silence</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medical -->
+      <div class="card">
+        <div class="card-head row-between">
+          🔬 Medical Mode
+          <label class="toggle"><input type="checkbox" id="medicalMode"><span class="slider"></span></label>
+        </div>
+        <div class="card-body">
+          <p class="muted text-sm">Improves accuracy for medications, procedures, conditions.<br/>Full optimization: EN · ES · DE · FR.</p>
+        </div>
+      </div>
+
+      <!-- AI Analysis (Gemini) -->
+      <div class="card">
+        <div class="card-head row-between">
+          ✦ AI Analysis
+          <label class="toggle"><input type="checkbox" id="geminiEnabled" checked><span class="slider"></span></label>
+        </div>
+        <div id="geminiBody" class="card-body">
+          <div class="opt-row">
+            <div>
+              <div class="opt-label">Summary</div>
+              <div class="opt-sub">Short 2-3 sentence overview</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="geminiSummary" checked><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div>
+              <div class="opt-label">Конспект</div>
+              <div class="opt-sub">Detailed notes with key points by topic</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="geminiNotes"><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div>
+              <div class="opt-label">AI Speaker Names</div>
+              <div class="opt-sub">Detect names in native script</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="geminiSpeakers" checked><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- English Pro -->
+      <div class="card card-gold">
+        <div class="card-head row-between">
+          🇺🇸 English Pro <span class="badge-gold">EN only</span>
+        </div>
+        <div class="card-body">
+          <div class="opt-row">
+            <div><span class="opt-label">Entity Detection</span><div class="opt-sub">PERSON · ORG · LOCATION…</div></div>
+            <label class="toggle"><input type="checkbox" id="entityDetection"><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">Sentiment Analysis</span><div class="opt-sub">POSITIVE / NEGATIVE per sentence</div></div>
+            <label class="toggle"><input type="checkbox" id="sentimentAnalysis"><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">Content Safety</span><div class="opt-sub">Hate speech, weapons, drugs…</div></div>
+            <label class="toggle"><input type="checkbox" id="contentSafety"><span class="slider"></span></label>
+          </div>
+          <div id="safetyConfWrap" style="display:none">
+            <div class="opt-label mt-6">Confidence: <strong id="safetyVal">50</strong>%</div>
+            <input type="range" id="safetyConf" class="range" min="25" max="100" value="50" />
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">IAB Topic Detection</span><div class="opt-sub">300+ categories</div></div>
+            <label class="toggle"><input type="checkbox" id="iabCategories"><span class="slider"></span></label>
+          </div>
+          <div class="opt-row">
+            <div><span class="opt-label">Auto Highlights</span><div class="opt-sub">Key phrase extraction</div></div>
+            <label class="toggle"><input type="checkbox" id="autoHighlights"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced (full width) -->
+      <div class="card span-2">
+        <div id="advHead" class="card-head card-head-btn">
+          ⚙️ Advanced <span id="advChevron" class="chevron">▼</span>
+        </div>
+        <div id="advBody" class="card-body" style="display:none">
+          <div class="adv-grid">
+            <div>
+              <label class="field-label">Key Terms <span class="badge-beta">BETA</span></label>
+              <p class="muted text-sm mb-6">Domain vocabulary to improve accuracy (max 200)</p>
+              <input id="keyInput" class="input input-sm" placeholder="Type term, press Enter…" />
+              <div id="keyTags" class="tags mt-6"></div>
+            </div>
+            <div>
+              <label class="field-label">Custom Spelling</label>
+              <p class="muted text-sm mb-6">Override how specific words appear in transcript</p>
+              <div id="spellRules"></div>
+              <button id="btnAddSpell" class="btn btn-ghost btn-sm mt-6">+ Add Rule</button>
+            </div>
+          </div>
+          <hr class="divider" />
+          <div class="adv-grid">
+            <div>
+              <div class="opt-label">Speech Threshold: <strong id="threshVal">0.2</strong></div>
+              <input type="range" id="speechThresh" class="range" min="0" max="1" step="0.05" value="0.2" />
+            </div>
+            <div>
+              <label class="field-label">Audio Trim (ms)</label>
+              <div class="row-gap mt-6">
+                <div><div class="muted text-sm mb-4">From</div><input id="trimFrom" class="input input-sm" type="number" placeholder="0" /></div>
+                <div><div class="muted text-sm mb-4">To</div><input id="trimTo" class="input input-sm" type="number" placeholder="end" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /grid-2 -->
+
+    <div class="row-between mt-24">
+      <button id="btnBackSource" class="btn btn-outline">← Back</button>
+      <button id="btnTranscribe" class="btn btn-primary btn-lg">🎙 Start Transcription</button>
+    </div>
+  </section>
+
+  <!-- ══ STEP: PROCESSING ══ -->
+  <section id="step-processing" style="display:none">
+    <div class="processing">
+      <div class="spinner"></div>
+      <h2 id="procTitle">Uploading audio…</h2>
+      <p id="procStatus" class="muted">Please wait</p>
+      <div class="progress-wrap"><div id="progressBar" class="progress-bar"></div></div>
+      <p class="muted text-sm mt-8">~15–30 sec per minute of audio</p>
+    </div>
+  </section>
+
+  <!-- ══ STEP: RESULTS ══ -->
+  <section id="step-results" style="display:none">
+    <div class="page-title" id="resultsTitle">Transcription Complete</div>
+
+    <!-- Transcript viewer -->
+    <div class="transcript-card">
+      <div class="transcript-head">
+        <span id="transcriptMeta" class="muted text-sm"></span>
+        <div class="row-gap">
+          <button id="btnCopy" class="btn btn-ghost btn-sm">Copy</button>
+          <button id="btnEdit" class="btn btn-ghost btn-sm">Edit</button>
+        </div>
+      </div>
+      <div id="transcriptBody" class="transcript-body" contenteditable="false"></div>
+    </div>
+
+    <!-- Analytics panels -->
+    <div id="analyticsPanels"></div>
+
+    <!-- Config used -->
+    <div id="configPanel" class="cfg-panel" style="display:none"></div>
+
+    <!-- Downloads -->
+    <div class="dl-card">
+      <div class="dl-card-head">
+        <h3>Download Results</h3>
+        <button id="btnZip" class="btn btn-primary">⬇ Download All (ZIP)</button>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">📄 Transcript</div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="txt">TXT</button>
+          <button class="dl-btn" data-fmt="docx">DOCX</button>
+          <button class="dl-btn" data-fmt="pdf">PDF</button>
+          <button class="dl-btn" data-fmt="md">Markdown</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">📋 Table</div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="table/docx">DOCX</button>
+          <button class="dl-btn" data-fmt="table/pdf">PDF</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">📖 Literary</div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="literary/txt">TXT</button>
+          <button class="dl-btn" data-fmt="literary/docx">DOCX</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">🎤 Interview</div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="interview/docx">DOCX</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">📝 Verbatim</div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="verbatim/txt">TXT</button>
+          <button class="dl-btn" data-fmt="verbatim/docx">DOCX</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">🎬 Captions</div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="srt">SRT</button>
+          <button class="dl-btn" data-fmt="vtt">VTT</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">📝 Paragraphs <span class="dl-desc">Logical text blocks with timestamps</span></div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="paragraphs/txt">TXT</button>
+          <button class="dl-btn" data-fmt="paragraphs/docx">DOCX</button>
+          <button class="dl-btn" data-fmt="paragraphs/pdf">PDF</button>
+          <button class="dl-btn" data-fmt="paragraphs/md">MD</button>
+          <button class="dl-btn" data-fmt="paragraphs/json">JSON</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">⏱ Sentences <span class="dl-desc">Each sentence with timestamp · CSV opens in Excel</span></div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="sentences/txt">[00:01] TXT</button>
+          <button class="dl-btn" data-fmt="sentences/csv">CSV</button>
+          <button class="dl-btn" data-fmt="sentences/srt">SRT</button>
+          <button class="dl-btn" data-fmt="sentences/json">JSON</button>
+        </div>
+      </div>
+
+      <div class="dl-section">
+        <div class="dl-label">🔤 Word Timestamps <span class="dl-desc">Every word with start/end time and confidence</span></div>
+        <div class="dl-btns">
+          <button class="dl-btn" data-fmt="words/csv">CSV</button>
+          <button class="dl-btn" data-fmt="words/json">JSON</button>
+        </div>
+      </div>
+
+      <div id="dlTranslation" class="dl-section" style="display:none">
+        <div class="dl-label">🌐 Translation</div>
+        <div id="dlTransContent"></div>
+      </div>
+
+      <div id="dlRedacted" class="dl-section" style="display:none">
+        <div class="dl-label">🔇 Redacted Audio <span class="dl-desc">PII replaced with beep or silence</span></div>
+        <div class="dl-btns">
+          <button id="btnDlRedacted" class="dl-btn">Download</button>
+        </div>
+      </div>
+
+      <div id="dlAnalytics" class="dl-section" style="display:none">
+        <div class="dl-label">📊 Analytics</div>
+        <div id="dlAnalyticsContent" class="dl-btns"></div>
+      </div>
+    </div>
+
+    <div class="row-between mt-20">
+      <button id="btnNew" class="btn btn-outline">← New Transcript</button>
+      <span id="tidDisplay" class="muted text-sm mono"></span>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast" style="display:none"></div>
+
+<script src="/static/data.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

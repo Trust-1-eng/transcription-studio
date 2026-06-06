@@ -1,0 +1,35 @@
+# Secrets
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Build artefacts
+dist/
+build/
+node_modules/
+
+# Runtime
+temp/
+uploads/
+downloads/
+*.log
+fonts/
+
+# AI tooling caches
+.mcp.json
+.agents/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
