@@ -1,0 +1,12 @@
+services:
+  transcription-studio:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./temp:/app/temp
+      - ./fonts:/app/fonts
+    restart: unless-stopped

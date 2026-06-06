@@ -89,7 +89,7 @@ async def download_url(request: Request):
     result = subprocess.run(
         ["yt-dlp", "--extract-audio", "--audio-format", "mp3",
          "--audio-quality", "0", "--output", out_tmpl,
-         "--no-playlist", "--remote-components", "ejs:github", url],
+         "--no-playlist", url],
         capture_output=True, text=True, timeout=300
     )
 
@@ -142,6 +142,22 @@ async def transcribe(request: Request):
 @router.get("/api/transcript/{tid}")
 async def get_transcript(tid: str):
     return assemblyai_get(f"/v2/transcript/{tid}")
+
+
+@router.patch("/api/transcript/{tid}/edit")
+async def edit_transcript(tid: str, request: Request):
+    """Save user edits to transcript text. Edits override original data in all exports."""
+    from app.dependencies import edit_cache
+    body = await request.json()
+    edits = {}
+    if body.get("utterances") is not None:
+        edits["utterances"] = body["utterances"]
+    if body.get("text") is not None:
+        edits["text"] = body["text"]
+    if not edits:
+        raise HTTPException(400, "No edits provided")
+    edit_cache[tid] = edits
+    return {"ok": True}
 
 
 @router.get("/api/resume/{tid}")

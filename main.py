@@ -12,6 +12,7 @@ from app.utils import ensure_font
 from app.dependencies import temp_files, temp_lock
 from app.routes.core import router as core_router
 from app.routes.export import router as export_router
+from app.routes.alignment import router as alignment_router
 
 
 # ─────────────────────────────────────────────
@@ -56,6 +57,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.include_router(core_router)
 app.include_router(export_router)
+app.include_router(alignment_router)
 
 
 if __name__ == "__main__":

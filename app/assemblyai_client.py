@@ -4,19 +4,40 @@ import requests
 from fastapi import HTTPException
 
 from app.config import API_KEY, BASE_URL, JSON_HEADERS, UPLOAD_HEADERS, CACHE_TTL
-from app.dependencies import transcript_cache
+from app.dependencies import transcript_cache, edit_cache
 
 
 def get_transcript_cached(tid: str) -> dict:
-    """Get transcript data with caching to avoid repeated API calls during export."""
+    """Get transcript data with caching to avoid repeated API calls during export.
+    If user edits exist in edit_cache, they override utterance/text fields."""
     now = datetime.now().timestamp()
     if tid in transcript_cache:
         data, ts = transcript_cache[tid]
         if now - ts < CACHE_TTL:
-            return data
+            return _apply_edits(tid, data)
     data = assemblyai_get(f"/v2/transcript/{tid}")
     transcript_cache[tid] = (data, now)
-    return data
+    return _apply_edits(tid, data)
+
+
+def _apply_edits(tid: str, data: dict) -> dict:
+    """Apply user edits from edit_cache over transcript data."""
+    edits = edit_cache.get(tid)
+    if not edits:
+        return data
+    patched = dict(data)
+    if edits.get("utterances") and patched.get("utterances"):
+        edited_utts = edits["utterances"]
+        orig_utts = list(patched["utterances"])
+        for i, eu in enumerate(edited_utts):
+            if i < len(orig_utts) and eu.get("text") is not None:
+                orig_utts[i] = dict(orig_utts[i])
+                orig_utts[i]["text"] = eu["text"]
+        patched["utterances"] = orig_utts
+        patched["text"] = " ".join(u.get("text", "") for u in orig_utts)
+    elif edits.get("text") is not None:
+        patched["text"] = edits["text"]
+    return patched
 
 
 def upload(path: str) -> str:

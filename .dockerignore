@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+.env
+temp/*
+fonts/*.ttf
+.git
+.gitignore
+*.md
+tests/
+freelance/
+olx_examples/
+docs/
